@@ -1,0 +1,59 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+*.egg
+
+# Project artefacts
+data/raw/*
+data/*.csv
+data/category_tree.csv
+data/events.csv
+data/item_properties_part1.csv
+data/item_properties_part2.csv
+!data/raw/.gitkeep
+data/processed/*
+!data/processed/.gitkeep
+models/*
+!models/.gitkeep
+mlruns/*
+!mlruns/.gitkeep
+report/drift_report.html
+
+# Env / secrets
+.env
+.env.local
+
+# OS / editors
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+.claude/
+
+# Root-level generated artifacts
+/feature_importances.csv
+/forecast.csv
+/inventory_table.csv
+/persona_summary.csv
+/model.json
+/shap_summary.png
+report/drift_report.summary.json

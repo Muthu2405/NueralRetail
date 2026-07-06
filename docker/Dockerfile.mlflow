@@ -1,0 +1,20 @@
+FROM python:3.12-slim
+
+WORKDIR /mlflow
+
+# MLflow is already in pyproject.toml of the project; we install it
+# standalone for the dedicated tracking server image.
+RUN pip install --no-cache-dir mlflow==3.14.0
+
+EXPOSE 5000
+
+# SQLite backend + local artifact store; data persisted via the
+# docker-compose volume (mlflow_data).
+ENV MLFLOW_BACKEND_STORE_URI=sqlite:///mlflow/mlflow.db
+ENV MLFLOW_DEFAULT_ARTIFACT_ROOT=/mlflow/artifacts
+
+CMD ["mlflow", "server", \
+     "--host", "0.0.0.0", \
+     "--port", "5000", \
+     "--backend-store-uri", "sqlite:///mlflow/mlflow.db", \
+     "--default-artifact-root", "/mlflow/artifacts"]

@@ -1,0 +1,61 @@
+version: "3.8"
+
+services:
+  mlflow:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.mlflow
+    container_name: neuralretail_mlflow
+    image: neuralretail/mlflow:latest
+    ports:
+      - "5000:5000"
+    environment:
+      - MLFLOW_BACKEND_STORE_URI=sqlite:///mlflow/mlflow.db
+      - MLFLOW_DEFAULT_ARTIFACT_ROOT=/mlflow/artifacts
+    volumes:
+      - mlflow_data:/mlflow
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.api
+    container_name: neuralretail_api
+    image: neuralretail/api:latest
+    depends_on:
+      mlflow:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    environment:
+      - NEURALRETAIL_API_KEY=${NEURALRETAIL_API_KEY:-change-me-in-prod}
+      - NEURALRETAIL_API_HOST=0.0.0.0
+      - NEURALRETAIL_API_PORT=8000
+      - MLFLOW_TRACKING_URI=http://mlflow:5000
+    volumes:
+      - ../data/processed:/app/data/processed:ro
+      - ../models:/app/models:ro
+
+  dashboard:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.dashboard
+    container_name: neuralretail_dashboard
+    image: neuralretail/dashboard:latest
+    # No API dependency: the dashboard reads parquet/csv + on-disk
+    # model artifacts directly, so it can boot before the API
+    # service is up.
+    ports:
+      - "8501:8501"
+    environment:
+      - NEURALRETAIL_API_URL=http://api:8000
+    volumes:
+      - ../data/processed:/app/data/processed:ro
+      - ../models:/app/models:ro
+
+volumes:
+  mlflow_data:
