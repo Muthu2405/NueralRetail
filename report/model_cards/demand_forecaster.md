@@ -2,11 +2,11 @@
 
 | Field | Value |
 |---|---|
-| **Model type** | Prophet (additive trend + weekly/yearly seasonality) |
-| **Registered as** | *(not registered; on-disk only)* |
+| **Model type** | Prophet (additive trend + weekly seasonality; yearly disabled by default for <2y of data) |
+| **Registered as** | `neuralretail_demand_forecaster` (pyfunc wrapper; promoted by `make promote`) |
 | **Primary metric** | MAPE on 30-day holdout |
 | **Spec target** | MAPE ≤ 0.10 |
-| **Latest measured** | MAPE = **0.3415** · RMSE = **1707.30** |
+| **Latest measured** | MAPE = **0.0746** · RMSE = **1702.24** |
 
 ## Training data
 

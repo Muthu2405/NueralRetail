@@ -50,6 +50,7 @@ from neuralretail.models import churn as churn_mod
 from neuralretail.models import forecasting as fc_mod
 from neuralretail.models import inventory as inv_mod
 from neuralretail.models import segmentation as seg_mod
+from neuralretail.models._mlflow_utils import REGISTERED_MODEL_NAMES
 
 logger = logging.getLogger(__name__)
 
@@ -70,12 +71,81 @@ class _State:
     loaded: dict[str, bool] = {}
 
 
+def _load_prophet_from_registry() -> Prophet | None:
+    """Try to load Prophet from the MLflow registry (Production alias).
+
+    Returns the unwrapped Prophet model if a registered Production
+    pyfunc exists. The pyfunc wrapper holds a fitted Prophet under
+    ``_model`` — we extract it so the rest of the API (which uses
+    the native Prophet API for ``make_future_dataframe`` etc.) can
+    keep working unchanged.
+
+    Falls back to ``None`` if:
+    - the tracking URI is misconfigured
+    - the registry has no Production-aliased version
+    - the registered model is not a pyfunc wrapper
+
+    Production wiring: ``make promote`` sets the alias to the best
+    run; this loader then pulls that version at API startup.
+    """
+    try:
+        import mlflow.pyfunc
+
+        settings = get_settings()
+        # Set the tracking URI globally first — a default
+        # ``MlflowClient()`` does not always inherit the URI from a
+        # prior ``mlflow.set_tracking_uri()`` call (it can fall back
+        # to its own resolution). Setting it on the module before
+        # the explicit constructor argument pins the URI for both
+        # the REST resolver and the artifact path.
+        mlflow.set_tracking_uri(settings.mlflow_tracking_uri)
+        mlflow.set_registry_uri(settings.mlflow_tracking_uri)
+        client = mlflow.tracking.MlflowClient(
+            tracking_uri=settings.mlflow_tracking_uri
+        )
+        mv = client.get_model_version_by_alias(
+            REGISTERED_MODEL_NAMES["forecasting"], "Production"
+        )
+        if mv is None:
+            return None
+        model_uri = f"models:/{REGISTERED_MODEL_NAMES['forecasting']}/{mv.version}"
+        pyfunc_model = mlflow.pyfunc.load_model(model_uri)
+        # The pyfunc wrapper holds the fitted Prophet under
+        # ``_model`` (set in ``_ProphetPyFunc.__init__``).
+        if hasattr(pyfunc_model, "unwrap_python_model"):
+            inner = pyfunc_model.unwrap_python_model()
+            if hasattr(inner, "_model"):
+                return inner._model
+        if hasattr(pyfunc_model, "_model_impl"):
+            # Older MLflow versions: dig through the model_impl.
+            inner = getattr(pyfunc_model._model_impl, "python_model", None)
+            if inner is not None and hasattr(inner, "_model"):
+                return inner._model
+        return None
+    except Exception as exc:
+        logger.info("Prophet not available in MLflow registry: %s", exc)
+        return None
+
+
 def _safe_load_prophet() -> Prophet | None:
+    """Load the Prophet model from the MLflow registry first, falling
+    back to the on-disk JSON.
+
+    The MLflow path is the production source of truth (model is
+    promoted to the ``Production`` alias by ``make promote``). The
+    on-disk JSON is a fast local-dev fallback when the registry
+    hasn't been populated yet.
+    """
+    model = _load_prophet_from_registry()
+    if model is not None:
+        logger.info("Loaded Prophet from MLflow registry")
+        return model
     path = get_settings().models_dir / "prophet_demand.json"
     if not path.exists():
         logger.warning("Prophet model not found at %s", path)
         return None
     try:
+        logger.info("Loaded Prophet from on-disk JSON at %s", path)
         return fc_mod.load_latest(str(path))
     except Exception as exc:  # pragma: no cover
         logger.error("Failed to load Prophet: %s", exc)

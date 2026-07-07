@@ -121,6 +121,11 @@ Suites:
 - `tests/test_drift.py` (9 tests) — split semantics + end-to-end report writer
 - `tests/test_inventory.py` (8 tests) — ABC/EOQ math + dead-stock flag
 - `tests/test_rfm.py` (8 tests) — RFM computation
+- `tests/test_synthetic_generator.py` (10 tests) — v2 generator
+  property checks
+- `tests/test_churn.py` (7 tests) — churn feature builder + label + train
+- `tests/test_segmentation.py` (4 tests) — `_select_k`, personas, train
+- `tests/test_cli_exit_code.py` (2 tests) — GE-failure non-zero exit
 
 The 9 new `test_drift.py` cases are:
 
@@ -187,5 +192,13 @@ Drift: 0/6 columns drifted (share=0.00); ref=6,650 rows [2010-12-01 -> 2011-08-1
   out — will almost certainly show drift on `Country` and possibly
   `Quantity`. The detector was verified to fire when drift is
   injected (see § 1.2).
+
+  **2026-07 update (v2 generator):** the regenerated drift report
+  now covers the full v2 synthetic window — 19,950 reference rows
+  (2010-12-01 → 2011-09-05) vs 8,550 current rows
+  (2011-09-05 → 2011-12-09). 1/6 columns drifted (`TotalPrice`,
+  which is expected because the generator scales the daily
+  total toward the end of the year to mimic Q4 uplift). The
+  old 2020 fixture report is no longer committed.
 - **`docker-compose.yml` carries an obsolete top-level `version`
   key** that prints a warning. It does not affect functionality.

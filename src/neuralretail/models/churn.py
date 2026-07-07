@@ -145,9 +145,24 @@ def train(
     *,
     snapshot_date: pd.Timestamp | None = None,
     inactivity_days: int = INACTIVITY_DAYS,
+    enable_lightgbm: bool | None = None,
     run_name: str = "xgboost_churn",
 ) -> ChurnModelResult:
-    """Train an XGBoost churn classifier; logs metrics + SHAP to MLflow."""
+    """Train an XGBoost churn classifier; logs metrics + SHAP to MLflow.
+
+    If ``Settings.enable_lightgbm`` (or the ``enable_lightgbm`` arg)
+    is True, also fits a LightGBM model on the same training data
+    in a *separate* MLflow run (tagged ``framework=lightgbm``) and
+    logs a side-by-side comparison. The XGBoost model is still the
+    one returned and registered as ``neuralretail_churn_classifier``.
+    LightGBM is opt-in because it requires the ``lightgbm`` package
+    and the spec is satisfied with XGBoost alone.
+    """
+    from neuralretail.config import get_settings
+
+    settings = get_settings()
+    if enable_lightgbm is None:
+        enable_lightgbm = settings.enable_lightgbm
     df = build_training_table(transactions, rfm, snapshot_date=snapshot_date, inactivity_days=inactivity_days)
     X = df[FEATURE_COLUMNS].fillna(0)
     y = df["churned"]
@@ -194,6 +209,7 @@ def train(
                 "learning_rate": 0.05,
                 "inactivity_days": inactivity_days,
                 "snapshot_date": str(snapshot_date) if snapshot_date is not None else "auto",
+                "enable_lightgbm": bool(enable_lightgbm),
             }
         )
         log_metrics(metrics)
@@ -225,6 +241,57 @@ def train(
             mlflow.log_artifact("shap_summary.png")
         except Exception as exc:  # pragma: no cover
             logger.warning("Could not generate SHAP summary: %s", exc)
+
+    # Optional LightGBM run (side-by-side comparison, does NOT
+    # replace the XGBoost run for the registered model).
+    if enable_lightgbm:
+        try:
+            import lightgbm as lgb
+
+            lgb_model = lgb.LGBMClassifier(
+                n_estimators=200,
+                max_depth=4,
+                learning_rate=0.05,
+                subsample=0.9,
+                colsample_bytree=0.9,
+                random_state=RANDOM_STATE,
+                verbose=-1,
+            )
+            lgb_model.fit(X_train, y_train)
+            lgb_pred = lgb_model.predict(X_test)
+            lgb_proba = lgb_model.predict_proba(X_test)[:, 1]
+            lgb_metrics = {
+                "auc_roc": float(roc_auc_score(y_test, lgb_proba)),
+                "accuracy": float(accuracy_score(y_test, lgb_pred)),
+                "precision": float(precision_score(y_test, lgb_pred, zero_division=0)),
+                "recall": float(recall_score(y_test, lgb_pred, zero_division=0)),
+                "f1": float(f1_score(y_test, lgb_pred, zero_division=0)),
+            }
+            with start_run(
+                run_name="lightgbm_churn",
+                tags={"model": "churn", "framework": "lightgbm"},
+            ):
+                log_params(
+                    {
+                        "n_estimators": 200,
+                        "max_depth": 4,
+                        "learning_rate": 0.05,
+                        "inactivity_days": inactivity_days,
+                    }
+                )
+                log_metrics(lgb_metrics)
+            logger.info(
+                "LightGBM churn (opt-in): AUC-ROC=%.4f F1=%.4f",
+                lgb_metrics["auc_roc"],
+                lgb_metrics["f1"],
+            )
+        except ImportError:
+            logger.warning(
+                "enable_lightgbm=True but the lightgbm package is not installed; "
+                "skipping the LightGBM comparison run."
+            )
+        except Exception as exc:  # pragma: no cover
+            logger.warning("LightGBM comparison run failed: %s", exc)
 
     logger.info("Churn model: AUC-ROC=%.4f precision=%.4f recall=%.4f", metrics["auc_roc"], metrics["precision"], metrics["recall"])
     return ChurnModelResult(model=model, feature_columns=FEATURE_COLUMNS, metrics=metrics, feature_importances=importances)

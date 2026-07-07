@@ -47,9 +47,36 @@ class Settings(BaseSettings):
     dashboard_port: int = Field(default=8501)
 
     # --- Feature flags ---
-    enable_lstm: bool = Field(default=False)
+    # LightGBM opt-in for the churn classifier comparison run. Off by
+    # default so the default pipeline is XGBoost-only.
     enable_lightgbm: bool = Field(default=False)
+    # DBSCAN opt-in for an alternative density-based segmenter. Off by
+    # default so the default pipeline is KMeans-only.
     enable_dbscan: bool = Field(default=False)
+
+    # --- Prophet (demand forecasting) ---
+    # changepoint_prior_scale controls trend flexibility; lower = stiffer.
+    # The default of 0.05 is Prophet's "moderate flexibility" choice.
+    # Higher values let the trend bend more (good for fast-growing
+    # series), lower values keep it stiffer (good for stable series).
+    prophet_changepoint_prior_scale: float = Field(default=0.05)
+    # "multiplicative" matches the synthetic data's trend × season shape
+    # and is a sensible default for revenue series. Set to "additive"
+    # if the seasonality is constant-magnitude (rather than
+    # proportional to the trend).
+    prophet_seasonality_mode: str = Field(default="multiplicative")
+    # Yearly seasonality is OFF by default. With only ~1 year of
+    # training data, Prophet cannot fit a stable yearly cycle (one
+    # full period = 365 days, so the model has exactly one cycle to
+    # learn from and tends to over-fit the trend instead). Turn it
+    # on when the cleaned data spans 2+ full years.
+    prophet_yearly_seasonality: bool = Field(default=False)
+    prophet_yearly_fourier_order: int = Field(default=10)
+    prophet_weekly_fourier_order: int = Field(default=3)
+    # Holiday calendar to inject. Empty list disables. The
+    # `neuralretail.models.forecasting` module knows about "UK", "US",
+    # "DE", and a few others (anything Prophet ships a DataFrame for).
+    prophet_holidays_country: str = Field(default="UK")
 
     # --- Monitoring / drift ---
     # Fraction of the cleaned data used as the drift "reference" window

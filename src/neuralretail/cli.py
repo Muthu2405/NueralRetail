@@ -25,13 +25,24 @@ def _setup_logging() -> None:
 
 
 def cmd_data(_args: argparse.Namespace) -> int:
-    """Phase 1: ingest raw -> clean + GE validate -> processed parquet."""
+    """Phase 1: ingest raw -> clean + GE validate -> processed parquet.
+
+    Returns a non-zero exit code if Great Expectations validation
+    fails on the cleaned data. The actual ``RuntimeError`` from
+    ``clean_and_save`` would also produce exit code 1 via Python's
+    default unhandled-exception path, but we surface it explicitly
+    here so the contract is testable and the message is friendly.
+    """
     from neuralretail.data.ingest import load_raw
     from neuralretail.data.clean import clean_and_save
 
     settings = get_settings()
     raw = load_raw()
-    cleaned, report = clean_and_save(raw)
+    try:
+        cleaned, report = clean_and_save(raw)
+    except RuntimeError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 1
     print(
         f"Cleaned: {report.rows_in} -> {report.rows_out} rows "
         f"(cancelled={report.cancelled_dropped}, "

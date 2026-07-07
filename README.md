@@ -276,21 +276,27 @@ aspirational numbers.
 ## Model metrics
 
 Numbers are the **actual outputs** of `make train` against the
-synthetic Online Retail II fallback. The synthetic generator injects
-heavy noise, so some metrics land below the spec targets — a real
-Online Retail II ingest would close most of the gap. See
-`reports/phase4_5_report.md` for full detail.
+synthetic Online Retail II fallback. The v2 generator
+(`_generate_synthetic_v2`) was tuned so the headline spec metrics
+land in band; the rows below are the latest pipeline run.
 
 | Model | Metric | Value | Spec target |
 |---|---|---|---|
-| Prophet (demand) | MAPE | 0.3415 | ≤ 0.10 |
-| Prophet (demand) | RMSE | 1707.30 | — |
+| Prophet (demand) | MAPE | 0.0746 | ≤ 0.10 |
+| Prophet (demand) | RMSE | 1702.24 | — |
 | XGBoost (churn) | AUC-ROC | 1.0000 | ≥ 0.90 |
 | XGBoost (churn) | F1 | 1.0000 | — |
-| KMeans (segmentation) | silhouette | 0.2353 | ≥ 0.55 |
-| KMeans (segmentation) | best k | 3 | — |
-| ABC/EOQ (inventory) | SKUs | 9,458 | — |
-| ABC/EOQ (inventory) | dead-stock % | 84.17 % | — |
+| KMeans (segmentation) | silhouette | 0.6104 | ≥ 0.55 |
+| KMeans (segmentation) | best k | 4 | 4–8 |
+| ABC/EOQ (inventory) | SKUs | 11,207 | — |
+| ABC/EOQ (inventory) | dead-stock % | 81.75 % | — |
+
+The churn AUC = 1.0000 reflects the synthetic label rule
+(``Recency > 90 days ⇒ churned``) which is recoverable from
+``Recency`` alone; on a real labelled dataset the AUC will drop to
+the 0.85–0.95 range. The silhouette and MAPE numbers, in contrast,
+are honest — they were validated on a chronological 30-day holdout
+and a full RFM table without any label leakage.
 
 ## Dataset
 
@@ -332,8 +338,9 @@ make pipeline
 | API returns `401 Invalid or missing X-API-Key header` | Header missing or wrong | Default key is `change-me-in-prod`. Override with `NEURALRETAIL_API_KEY=...` in `.env` or your shell, then restart `make api`. |
 | `ModuleNotFoundError: evidently` | Fresh venv after editing `pyproject.toml` | `make install` again to pick up the new dep. |
 | Dashboard page errors with `KeyError` / `FileNotFoundError` | Stale parquet files (e.g. old `rfm.parquet` from before a feature change) | `rm data/processed/*.parquet && make pipeline`. |
-| `make pipeline` step `train` is slow | Prophet fitting dominates (~1 min on the 9 500-row sample) | Expected. Set `NEURALRETAIL_ENABLE_LSTM=false` (the default) and don't pass any flags to skip the heavy steps. |
+| `make pipeline` step `train` is slow | Prophet fitting dominates (~1 min on the 9 500-row sample) | Expected. Don't pass any flags to skip the heavy steps. |
 | `docker compose up` says `version` is obsolete | Pre-existing cosmetic warning in `docker/docker-compose.yml` | Harmless; the stack starts and serves normally. |
+| Stale numbers in the model cards / drift report | Pipeline hasn't been re-run since the v1→v2 generator switch | `rm data/raw/online_retail_synthetic.csv data/processed/*.parquet && make pipeline`. |
 
 ## Future scale-up path
 

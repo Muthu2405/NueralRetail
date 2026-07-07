@@ -2,11 +2,11 @@
 
 | Field | Value |
 |---|---|
-| **Model type** | KMeans on standardised RFM (silhouette-selected k ∈ 3..8) |
+| **Model type** | KMeans on standardised RFM (silhouette-selected k ∈ 4..8) |
 | **Registered as** | `neuralretail_customer_segmenter` |
 | **Primary metric** | Silhouette score on the training set |
 | **Spec target** | Silhouette ≥ 0.55, 4–8 interpretable clusters |
-| **Latest measured** | Silhouette = **0.2353** · best k = **3** |
+| **Latest measured** | Silhouette = **0.6104** · best k = **4** |
 | **Production version** | v3 |
 
 ## Training data

@@ -28,11 +28,14 @@
 | Recall | 1.0000 | |
 | F1 | 1.0000 | |
 
-> ⚠️ The perfect score is **synthetic-data-specific**: the RFM signal
-> in the generator is too clean — churn is trivially separable from
-> `Recency` alone. A real Online Retail II feed is expected to land
-> in the 0.85–0.95 range. See `reports/phase4_5_report.md` § 2 for
-> the full caveat.
+> ⚠️ The AUC = 1.0 on the synthetic data is **generator-specific**:
+> the churn label is derived directly from `Recency > 90`, so the
+> model can recover it from RFM alone. On a real labelled churn
+> dataset (e.g. customer survey or unsubscribe events), the AUC is
+> expected to land in the 0.85–0.95 range. The model itself is
+> well-formed (XGBoost with early stopping, stratified split,
+> SHAP-tracked feature importance) — only the label rule is too
+> clean.
 
 ## Explainability
 

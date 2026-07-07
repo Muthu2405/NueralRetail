@@ -71,14 +71,21 @@ def _fit_pipeline(X: np.ndarray, k: int) -> Pipeline:
 
 
 def _select_k(X: np.ndarray, k_range: range) -> tuple[int, dict[int, float]]:
-    """Return (best_k, {k: silhouette}) for k in k_range."""
+    """Return (best_k, {k: silhouette}) for k in k_range.
+
+    Silhouette is computed on the *scaled* features — that's the
+    space KMeans actually operates in. Computing it on the raw RFM
+    units (where Monetary dominates) under-weights Recency and
+    Frequency, and KMeans appears worse than it is.
+    """
     scores: dict[int, float] = {}
     for k in k_range:
         pipe = _fit_pipeline(X, k)
+        X_scaled = pipe.named_steps["scaler"].transform(X)
         labels = pipe.named_steps["kmeans"].labels_
         if len(set(labels)) < 2:
             continue
-        scores[k] = float(silhouette_score(X, labels))
+        scores[k] = float(silhouette_score(X_scaled, labels))
     if not scores:
         raise RuntimeError("Could not compute silhouette for any k")
     best_k = max(scores, key=scores.get)
@@ -132,11 +139,20 @@ def _assign_personas(centroids: pd.DataFrame) -> dict[int, str]:
 def train(
     rfm: pd.DataFrame,
     *,
-    k_min: int = 3,
+    k_min: int = 4,
     k_max: int = 8,
     run_name: str = "kmeans_segmentation",
 ) -> SegmentationResult:
-    """Fit KMeans on RFM, pick k by silhouette, derive personas, log to MLflow."""
+    """Fit KMeans on RFM, pick k by silhouette, derive personas, log to MLflow.
+
+    The default k range is [4, 8] (per the build-prompt spec — "4-8
+    clusters"). When the data has fewer natural clusters than the
+    minimum k, KMeans will still fit a k=k_min model (each "real"
+    cluster is split into sub-clusters), but the silhouette will
+    be lower than it would be at the natural k. In that case the
+    ``_assign_personas`` step falls back to a fixed priority order
+    so the persona names are stable across runs.
+    """
     X = rfm[SEGMENT_FEATURES].fillna(0).to_numpy(dtype=float)
     best_k, scores = _select_k(X, range(k_min, k_max + 1))
     logger.info("Segmentation: best k=%d scores=%s", best_k, {k: round(s, 3) for k, s in scores.items()})
@@ -164,7 +180,11 @@ def train(
         .reset_index()
     )
 
-    final_sil = float(silhouette_score(X, labels))
+    # Compute the final silhouette on the scaled features (the space
+    # KMeans actually operates in) so the reported number matches
+    # what the model is using internally.
+    X_scaled = pipeline.named_steps["scaler"].transform(X)
+    final_sil = float(silhouette_score(X_scaled, labels))
     metrics = {
         "best_k": float(best_k),
         "silhouette": final_sil,

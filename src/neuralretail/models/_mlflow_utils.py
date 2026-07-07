@@ -169,6 +169,7 @@ def promote_to_production(run_id: str, model_name: str) -> None:
 
 # Map: logical key -> (registered_model_name, primary_metric, direction)
 PROMOTION_CRITERIA: dict[str, tuple[str, str, str]] = {
+    "forecasting": (REGISTERED_MODEL_NAMES["forecasting"], "mape", "min"),
     "churn": (REGISTERED_MODEL_NAMES["churn"], "auc_roc", "max"),
     "segmentation": (REGISTERED_MODEL_NAMES["segmentation"], "silhouette", "max"),
     # Inventory's "model quality" is harder to express as a single metric,
@@ -176,8 +177,6 @@ PROMOTION_CRITERIA: dict[str, tuple[str, str, str]] = {
     # (dead_stock_pct tracks data coverage, not model skill, and a 0%
     # value just means a tiny test fixture — not a better model.)
     "inventory": (REGISTERED_MODEL_NAMES["inventory"], "n_skus", "max"),
-    # forecasting logs MAPE/rmse but Prophet isn't registered as a
-    # sklearn model, so it's not promoted. (The spec accepts that.)
 }
 
 
