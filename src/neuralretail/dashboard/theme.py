@@ -68,6 +68,6 @@ def tint(hex_color: str, *, lightness_shift: float) -> str:
     Useful for one-off hover states or shaded backgrounds in CSS snippets.
     """
     r, g, b = _hex_to_rgb(hex_color)
-    h, l, s = colorsys.rgb_to_hls(r, g, b)
-    l = max(0.0, min(1.0, l + lightness_shift))
-    return _rgb_to_hex(colorsys.hls_to_rgb(h, l, s))
+    h, lightness, s = colorsys.rgb_to_hls(r, g, b)
+    lightness = max(0.0, min(1.0, lightness + lightness_shift))
+    return _rgb_to_hex(colorsys.hls_to_rgb(h, lightness, s))

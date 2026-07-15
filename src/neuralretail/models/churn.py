@@ -19,6 +19,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -226,8 +227,8 @@ def train(
 
         # SHAP summary plot
         try:
-            import shap
             import matplotlib
+            import shap
 
             matplotlib.use("Agg")
             explainer = shap.TreeExplainer(model)

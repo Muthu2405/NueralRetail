@@ -15,8 +15,6 @@ not chart styling.
 
 from __future__ import annotations
 
-from typing import Optional
-
 import streamlit as st
 
 from neuralretail.dashboard.theme import (
@@ -28,7 +26,7 @@ from neuralretail.dashboard.theme import (
 )
 
 
-def kpi_card(title: str, value: str, delta: Optional[str] = None) -> None:
+def kpi_card(title: str, value: str, delta: str | None = None) -> None:
     """Render a single KPI tile.
 
     Parameters

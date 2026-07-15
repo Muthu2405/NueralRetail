@@ -16,22 +16,21 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import Any
 
+import mlflow.pyfunc
 import numpy as np
 import pandas as pd
-import mlflow.pyfunc
 from prophet import Prophet
 from prophet.serialize import model_from_json, model_to_json
 from sklearn.metrics import mean_absolute_percentage_error, mean_squared_error
 
+from neuralretail.config import get_settings
 from neuralretail.models._mlflow_utils import (
     REGISTERED_MODEL_NAMES,
     log_metrics,
     log_params,
     start_run,
 )
-from neuralretail.config import get_settings
 
 logger = logging.getLogger(__name__)
 
@@ -297,7 +296,6 @@ def predict(model: Prophet, periods: int) -> pd.DataFrame:
 
 def save(model: Prophet, path: str | None = None) -> str:
     """Serialize a Prophet model to disk (JSON)."""
-    import json
     from pathlib import Path
 
     settings = get_settings()

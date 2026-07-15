@@ -24,11 +24,11 @@ for _noisy in (
 ):
     logging.getLogger(_noisy).setLevel(logging.ERROR)
 
-import great_expectations as gx
-import great_expectations.expectations as gxe
-import pandas as pd
+import great_expectations as gx  # noqa: E402
+import great_expectations.expectations as gxe  # noqa: E402
+import pandas as pd  # noqa: E402
 
-from neuralretail.config import get_settings
+from neuralretail.config import get_settings  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
@@ -82,7 +82,7 @@ def clean(df: pd.DataFrame) -> tuple[pd.DataFrame, CleanReport]:
     # 5. Parse InvoiceDate to datetime
     df["InvoiceDate"] = pd.to_datetime(df["InvoiceDate"], errors="coerce")
     bad_date_mask = df["InvoiceDate"].isna()
-    n_bad_date = int(bad_date_mask.sum())
+    n_bad_date = int(bad_date_mask.sum())  # noqa: F841
     df = df.loc[~bad_date_mask]
 
     # 6. TotalPrice
@@ -117,6 +117,7 @@ def _silence_ge_progress_bars() -> None:
     inside ``validation_graph`` directly to a silent subclass.
     """
     import os
+
     import tqdm
 
     _orig_tqdm = tqdm.tqdm
@@ -143,7 +144,6 @@ def _silence_ge_progress_bars() -> None:
     # GE's validation_graph captures the symbol at import time. Walk through
     # every great_expectations module and rewrite the `tqdm` name.
     import sys
-    import importlib
 
     for mod_name, mod in list(sys.modules.items()):
         if not mod_name.startswith("great_expectations"):

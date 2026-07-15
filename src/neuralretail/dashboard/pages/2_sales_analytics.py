@@ -11,7 +11,7 @@ import plotly.express as px
 import streamlit as st
 
 from neuralretail.dashboard import data as d
-from neuralretail.dashboard.components import format_currency, format_int, section_header
+from neuralretail.dashboard.components import format_currency, section_header
 from neuralretail.dashboard.theme import ACCENT
 
 st.set_page_config(page_title="Sales Analytics · NeuralRetail", page_icon="📈", layout="wide")

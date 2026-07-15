@@ -19,12 +19,11 @@ from __future__ import annotations
 import logging
 import time
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
-from pathlib import Path
+from datetime import UTC, datetime
 from typing import Any
 
 import pandas as pd
-from fastapi import Depends, FastAPI, HTTPException, Request, status
+from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.security import APIKeyHeader
 from prophet import Prophet
 
@@ -45,7 +44,6 @@ from neuralretail.api.schemas import (
     SegmentResponse,
 )
 from neuralretail.config import get_settings
-from neuralretail.features.timeseries import build_daily_revenue
 from neuralretail.models import churn as churn_mod
 from neuralretail.models import forecasting as fc_mod
 from neuralretail.models import inventory as inv_mod
@@ -408,4 +406,4 @@ def inventory_reorder(req: InventoryRequest) -> InventoryResponse:
         if col in table.columns:
             summary[col] = float(table[col].iloc[0])
 
-    return InventoryResponse(rows=rows, summary=summary, generated_at=datetime.now(timezone.utc))
+    return InventoryResponse(rows=rows, summary=summary, generated_at=datetime.now(UTC))

@@ -12,7 +12,6 @@ sidebar in filename order.
 from __future__ import annotations
 
 import logging
-from datetime import date
 
 import pandas as pd
 import plotly.io as pio
@@ -126,7 +125,7 @@ with st.sidebar:
 
 st.title("NeuralRetail — Retail Sales Intelligence")
 st.markdown(
-    f"""
+    """
     Welcome. Use the sidebar to navigate:
 
     1. **Executive Overview** — headline KPIs and revenue by country.

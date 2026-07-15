@@ -20,14 +20,13 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+import mlflow
+import mlflow.pyfunc
 import numpy as np
 import pandas as pd
 
 from neuralretail.config import get_settings
 from neuralretail.models._mlflow_utils import log_metrics, log_params, start_run
-
-import mlflow
-import mlflow.pyfunc
 
 logger = logging.getLogger(__name__)
 

@@ -7,9 +7,10 @@ log/promote pattern so each model module only needs to call the helpers.
 from __future__ import annotations
 
 import logging
+from collections.abc import Iterator, Mapping
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, Iterator, Mapping
+from typing import Any
 
 import mlflow
 import mlflow.sklearn
@@ -101,7 +102,6 @@ def log_python_model(
     """
     import mlflow
 
-    target = "model"
     if flavor == "sklearn":
         if registered_model_name is None:
             mlflow.sklearn.log_model(model, artifact_path=artifact_path)
@@ -190,7 +190,7 @@ def promote_best() -> dict[str, str]:
     client = mlflow.tracking.MlflowClient()
     promoted: dict[str, str] = {}
 
-    for key, (model_name, metric, direction) in PROMOTION_CRITERIA.items():
+    for model_name, metric, direction in PROMOTION_CRITERIA.values():
         try:
             versions = client.search_model_versions(f"name='{model_name}'")
         except Exception as exc:  # pragma: no cover

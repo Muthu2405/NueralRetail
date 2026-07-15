@@ -13,7 +13,6 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-
 # ---------------------------------------------------------------------------
 # Shared config: forbid extras, allow pandas-friendly coercion
 # ---------------------------------------------------------------------------
@@ -128,7 +127,7 @@ class SegmentRequest(BaseModel):
     customers: list[ChurnFeatures] = Field(min_length=1, max_length=10_000)
 
     @model_validator(mode="after")
-    def _rfm_only(self) -> "SegmentRequest":
+    def _rfm_only(self) -> SegmentRequest:
         # Segmentation uses only the RFM columns of ChurnFeatures; the
         # other fields are ignored but allowed for client convenience.
         return self

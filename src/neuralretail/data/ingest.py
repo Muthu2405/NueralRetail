@@ -182,7 +182,7 @@ def _generate_synthetic_v2(
 
     # Total invoices (Frequency sum across customers) is the row count
     # we work with. We then sample down / up to n_rows at the end.
-    total_invoices = int(cust_freq.sum())
+    total_invoices = int(cust_freq.sum())  # noqa: F841
 
     # ---------------------------------------------------------------
     # Pass 2: build the deterministic daily-revenue curve
@@ -210,7 +210,7 @@ def _generate_synthetic_v2(
     # unexplained variance. The spec target MAPE ≤ 0.10 needs the
     # signal-to-noise ratio to stay above ~10:1.
     daily_noise = rng.normal(1.0, 0.02, size=n_days).clip(0.90, 1.10)
-    daily_revenue = daily_target * daily_noise
+    daily_revenue = daily_target * daily_noise  # noqa: F841
 
     # ---------------------------------------------------------------
     # Pass 3: assign each (customer, invoice) to a calendar day

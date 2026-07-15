@@ -33,8 +33,8 @@ def cmd_data(_args: argparse.Namespace) -> int:
     default unhandled-exception path, but we surface it explicitly
     here so the contract is testable and the message is friendly.
     """
-    from neuralretail.data.ingest import load_raw
     from neuralretail.data.clean import clean_and_save
+    from neuralretail.data.ingest import load_raw
 
     settings = get_settings()
     raw = load_raw()
@@ -106,7 +106,7 @@ def cmd_features(_args: argparse.Namespace) -> int:
 
 def cmd_train(_args: argparse.Namespace) -> int:
     """Phase 3: train forecasting, churn, segmentation, inventory; log to MLflow."""
-    from neuralretail.models import forecasting, churn, segmentation, inventory
+    from neuralretail.models import churn, forecasting, inventory, segmentation
     from neuralretail.models._mlflow_utils import setup_mlflow
 
     settings = get_settings()

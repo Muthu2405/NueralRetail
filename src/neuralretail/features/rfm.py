@@ -10,7 +10,6 @@ from __future__ import annotations
 import logging
 from typing import Final
 
-import numpy as np
 import pandas as pd
 
 from neuralretail.config import get_settings
@@ -98,8 +97,8 @@ def compute_rfm(
 
 def save_rfm(
     rfm: pd.DataFrame,
-    output_path: str | "Path" | None = None,  # noqa: F821
-) -> "Path":  # noqa: F821
+    output_path: str | Path | None = None,  # noqa: F821
+) -> Path:  # noqa: F821
     """Save RFM frame to parquet. Returns the path written."""
     from pathlib import Path
 

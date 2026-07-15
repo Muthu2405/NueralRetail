@@ -6,7 +6,6 @@ plus a revenue-by-country bar chart. Reads the sidebar filters.
 
 from __future__ import annotations
 
-import pandas as pd
 import plotly.express as px
 import streamlit as st
 

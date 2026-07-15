@@ -12,7 +12,6 @@ Everything reads from the on-disk processed dataset and on-disk
 from __future__ import annotations
 
 import logging
-from pathlib import Path
 from typing import Any
 
 import pandas as pd

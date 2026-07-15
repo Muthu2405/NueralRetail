@@ -74,3 +74,9 @@ ignore = ["E501"]
 # Tests follow numpy/sklearn convention (X = feature matrix) and use
 # short test fixture helpers; relax the naming rules there.
 "tests/**/*.py" = ["N802", "N806"]
+# Model modules use the scikit-learn convention (X = feature matrix,
+# X_train / X_test) and the prophet convention (X = future DataFrame).
+# The naming is part of the public surface; lowercasing would diverge
+# from the surrounding framework docs.
+"src/neuralretail/models/**/*.py" = ["N803", "N806"]
+"src/neuralretail/api/main.py" = ["N803", "N806"]

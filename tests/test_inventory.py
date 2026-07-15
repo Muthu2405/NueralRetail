@@ -6,7 +6,6 @@ can be verified without running the full training pipeline.
 
 from __future__ import annotations
 
-import numpy as np
 import pandas as pd
 import pytest
 
