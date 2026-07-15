@@ -187,12 +187,44 @@ def train(
     return InventoryResult(table=table, metrics=metrics)
 
 
-def save(table: pd.DataFrame, path: str | None = None) -> str:
+def save(
+    table: pd.DataFrame,
+    path: str | None = None,
+    metrics: dict[str, float] | None = None,
+) -> str:
+    """Persist the per-SKU inventory table to disk.
+
+    Parameters
+    ----------
+    table
+        Per-SKU DataFrame (one row per ``(StockCode, Description)``).
+    path
+        Output CSV path. Defaults to ``settings.models_dir / "inventory_table.csv"``.
+    metrics
+        Optional aggregate-metrics dict (the ``InventoryResult.metrics`` from
+        :func:`train`). When provided, also written as a sidecar JSON
+        (``inventory_metrics.json`` next to the CSV) so the API's
+        ``/inventory/reorder`` response can populate its ``summary`` block
+        without recomputing aggregates from the per-SKU table.
+
+    Returns
+    -------
+    str
+        The CSV path that was written.
+    """
+    import json
+
     settings = get_settings()
     path = path or str(settings.models_dir / "inventory_table.csv")
-    Path(path).parent.mkdir(parents=True, exist_ok=True)
-    table.to_csv(path, index=False)
-    return path
+    csv_path = Path(path)
+    csv_path.parent.mkdir(parents=True, exist_ok=True)
+    table.to_csv(csv_path, index=False)
+
+    if metrics is not None:
+        sidecar = csv_path.with_name("inventory_metrics.json")
+        sidecar.write_text(json.dumps(metrics, indent=2))
+        logger.info("Wrote inventory metrics sidecar to %s", sidecar)
+    return str(csv_path)
 
 
 def load_latest(path: str | None = None) -> pd.DataFrame:

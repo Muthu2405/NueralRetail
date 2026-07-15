@@ -153,3 +153,174 @@ def test_dead_stock_flag():
     assert int(table.loc["FRESH", "IsDeadStock"]) == 0
     assert int(table.loc["STALE", "IsDeadStock"]) == 1
     assert res.metrics["n_dead_stock"] == 1.0
+
+
+# ---------------------------------------------------------------------------
+# Sidecar metrics JSON (consumed by the API's /inventory/reorder summary)
+# ---------------------------------------------------------------------------
+
+
+def test_save_writes_sidecar_metrics(tmp_path):
+    """When `metrics` is provided, save() writes inventory_metrics.json
+    next to the CSV with the same keys and float values.
+    """
+    from neuralretail.models import inventory as inv_mod
+
+    table = pd.DataFrame(
+        [
+            {
+                "StockCode": "A",
+                "Description": "A",
+                "UnitsSold": 10,
+                "Revenue": 100.0,
+                "AvgUnitPrice": 5.0,
+                "LastSale": pd.Timestamp("2011-01-01"),
+                "ABC": "A",
+                "AnnualDemand": 10.0,
+                "EOQ": 5.0,
+                "DaysSinceLastSale": 0,
+                "IsDeadStock": 0,
+                "OrderingCost": 50.0,
+                "HoldingPct": 0.25,
+            }
+        ]
+    )
+    metrics = {
+        "n_skus": 1.0,
+        "n_class_a": 1.0,
+        "n_class_b": 0.0,
+        "n_class_c": 0.0,
+        "n_dead_stock": 0.0,
+        "dead_stock_pct": 0.0,
+        "total_revenue": 100.0,
+        "span_years": 1.025,
+    }
+    csv_path = tmp_path / "inventory_table.csv"
+    inv_mod.save(table, path=str(csv_path), metrics=metrics)
+
+    sidecar = tmp_path / "inventory_metrics.json"
+    assert sidecar.exists(), "sidecar JSON was not written"
+    import json
+
+    loaded = json.loads(sidecar.read_text())
+    assert loaded == metrics
+
+
+def test_save_without_metrics_does_not_write_sidecar(tmp_path):
+    """The `metrics` arg is optional; without it, only the CSV is written."""
+    from neuralretail.models import inventory as inv_mod
+
+    table = pd.DataFrame(
+        [
+            {
+                "StockCode": "A",
+                "Description": "A",
+                "UnitsSold": 1,
+                "Revenue": 5.0,
+                "AvgUnitPrice": 5.0,
+                "LastSale": pd.Timestamp("2011-01-01"),
+                "ABC": "A",
+                "AnnualDemand": 1.0,
+                "EOQ": 1.0,
+                "DaysSinceLastSale": 0,
+                "IsDeadStock": 0,
+                "OrderingCost": 50.0,
+                "HoldingPct": 0.25,
+            }
+        ]
+    )
+    csv_path = tmp_path / "inventory_table.csv"
+    inv_mod.save(table, path=str(csv_path))
+
+    sidecar = tmp_path / "inventory_metrics.json"
+    assert not sidecar.exists(), "sidecar should not be written without metrics"
+
+
+def test_api_inventory_reorder_returns_populated_summary():
+    """Integration: with a real table + sidecar loaded into _State, the
+    API /inventory/reorder response populates the summary block with all
+    eight expected keys.
+    """
+    import os
+
+    os.environ.setdefault("NEURALRETAIL_API_KEY", "test-key")
+
+    from fastapi.testclient import TestClient
+
+    from neuralretail.api.main import _State, app
+    from neuralretail.api.schemas import InventoryRequest
+
+    table = pd.DataFrame(
+        [
+            {
+                "StockCode": "A",
+                "Description": "Top SKU",
+                "UnitsSold": 100.0,
+                "Revenue": 1000.0,
+                "AvgUnitPrice": 10.0,
+                "LastSale": pd.Timestamp("2011-01-01"),
+                "ABC": "A",
+                "AnnualDemand": 100.0,
+                "EOQ": 10.0,
+                "DaysSinceLastSale": 0,
+                "IsDeadStock": 0,
+                "OrderingCost": 50.0,
+                "HoldingPct": 0.25,
+            }
+        ]
+    )
+    metrics = {
+        "n_skus": 1.0,
+        "n_class_a": 1.0,
+        "n_class_b": 0.0,
+        "n_class_c": 0.0,
+        "n_dead_stock": 0.0,
+        "dead_stock_pct": 0.0,
+        "total_revenue": 1000.0,
+        "span_years": 1.025,
+    }
+    # Save + restore _State so we don't leak across tests.
+    saved = (
+        _State.inventory_table,
+        _State.inventory_metrics,
+        dict(_State.loaded),
+    )
+    try:
+        # TestClient(app) runs the lifespan handler, which calls
+        # _load_models_into_state and overwrites _State. We have to set
+        # the test fixtures AFTER entering the lifespan context.
+        with TestClient(app) as client:
+            _State.inventory_table = table
+            _State.inventory_metrics = metrics
+            _State.loaded = {
+                "forecasting": False,
+                "churn": False,
+                "segmentation": False,
+                "inventory": True,
+            }
+            r = client.post(
+                "/inventory/reorder",
+                headers={"X-API-Key": "test-key"},
+                json={"top_n": 5, "abc_filter": "ALL", "dead_stock_only": False},
+            )
+        assert r.status_code == 200, r.text
+        body = r.json()
+        for key in (
+            "n_skus",
+            "n_class_a",
+            "n_class_b",
+            "n_class_c",
+            "n_dead_stock",
+            "dead_stock_pct",
+            "total_revenue",
+            "span_years",
+        ):
+            assert key in body["summary"], f"missing summary key {key!r}"
+        assert body["summary"]["n_skus"] == 1.0
+        assert body["summary"]["total_revenue"] == 1000.0
+    finally:
+        (
+            _State.inventory_table,
+            _State.inventory_metrics,
+            _State.loaded,
+        ) = saved

@@ -166,7 +166,7 @@ def cmd_train(_args: argparse.Namespace) -> int:
         f"C={int(inv.metrics['n_class_c'])}, "
         f"dead-stock={int(inv.metrics['n_dead_stock'])}"
     )
-    inventory.save(inv.table)
+    inventory.save(inv.table, metrics=inv.metrics)
     return 0
 
 

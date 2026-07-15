@@ -66,6 +66,7 @@ class _State:
     churn_model: Any = None
     seg_pipeline: Any = None
     inventory_table: pd.DataFrame | None = None
+    inventory_metrics: dict[str, float] | None = None
     loaded: dict[str, bool] = {}
 
 
@@ -174,16 +175,36 @@ def _safe_load_segmentation() -> Any:
         return None
 
 
-def _safe_load_inventory() -> pd.DataFrame | None:
+def _safe_load_inventory() -> tuple[pd.DataFrame | None, dict[str, float] | None]:
+    """Load the per-SKU inventory table and its metrics sidecar.
+
+    Returns ``(table, metrics)``. Both can be ``None`` if the CSV is
+    missing; ``metrics`` is also ``None`` when the CSV exists but the
+    sidecar JSON does not (back-compat with pre-fix artefacts).
+    """
+    import json
+
     path = get_settings().models_dir / "inventory_table.csv"
     if not path.exists():
         logger.warning("Inventory table not found at %s", path)
-        return None
+        return None, None
     try:
-        return inv_mod.load_latest(str(path))
+        table = inv_mod.load_latest(str(path))
     except Exception as exc:  # pragma: no cover
         logger.error("Failed to load inventory: %s", exc)
-        return None
+        return None, None
+
+    sidecar = path.with_name("inventory_metrics.json")
+    metrics: dict[str, float] | None = None
+    if sidecar.exists():
+        try:
+            metrics = json.loads(sidecar.read_text())
+        except Exception as exc:  # pragma: no cover
+            logger.warning("Failed to load inventory metrics sidecar %s: %s", sidecar, exc)
+            metrics = None
+    else:
+        logger.info("Inventory metrics sidecar not found at %s; summary will be empty", sidecar)
+    return table, metrics
 
 
 def _load_models_into_state() -> None:
@@ -192,7 +213,7 @@ def _load_models_into_state() -> None:
     _State.prophet = _safe_load_prophet()
     _State.churn_model = _safe_load_churn()
     _State.seg_pipeline = _safe_load_segmentation()
-    _State.inventory_table = _safe_load_inventory()
+    _State.inventory_table, _State.inventory_metrics = _safe_load_inventory()
     _State.loaded = {
         "forecasting": _State.prophet is not None,
         "churn": _State.churn_model is not None,
@@ -392,18 +413,6 @@ def inventory_reorder(req: InventoryRequest) -> InventoryResponse:
         for _, r in df.iterrows()
     ]
 
-    summary: dict[str, float] = {}
-    for col in (
-        "n_skus",
-        "n_class_a",
-        "n_class_b",
-        "n_class_c",
-        "n_dead_stock",
-        "dead_stock_pct",
-        "total_revenue",
-        "span_years",
-    ):
-        if col in table.columns:
-            summary[col] = float(table[col].iloc[0])
+    summary: dict[str, float] = dict(_State.inventory_metrics or {})
 
     return InventoryResponse(rows=rows, summary=summary, generated_at=datetime.now(UTC))

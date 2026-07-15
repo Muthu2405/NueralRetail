@@ -57,3 +57,8 @@ Thumbs.db
 /model.json
 /shap_summary.png
 report/drift_report.summary.json
+
+
+report/figures/
+report/NeuralRetail_Project_Overview.pdf
+scripts/build_project_pdf.pdf
